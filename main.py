@@ -1,15 +1,16 @@
 from struct import Struct
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-#import sys
+import sys
 
-import parse_param as pr
-import data_utils as dt
-import data_ops as dop
-import format_converter as fm
+import FRPG.paramparser as pr
+import FRPG.utils as dt
+import FRPG.paramops as dop
+import FRPG.formats as fm
+import CE.ce as ce
 
-param_path_default = r"../../resources/GameParam/"
-layout_path_default = r"../../resources/Layouts/"
-save_dir_default = r"../../resources/savedParams/"
+param_path_default = r"../resources/GameParam/"
+layout_path_default = r"../resources/Layouts/"
+save_dir_default = r"../resources/savedParams/"
 
 param_path = ""
 layout_path = ""
@@ -42,9 +43,9 @@ def mod_param():
                 npc_ids = param_npc_atk.data.keys()
                 if(len(self_ref_rows)>0):
                     print("[Add self references SAFE] ->")
-                    param = dop.shuffle_bullet_ids_save(param,row_list_keep,ids_to_keep,pc_ids,npc_ids,chance)
+                    param = dop.shuffle_bullet_ids_safe(param,row_list_keep,ids_to_keep,pc_ids,npc_ids,chance)
                 else:
-                    param = dop.shuffle_bullet_ids_save(param,row_list_keep,ids_to_keep,pc_ids,npc_ids)
+                    param = dop.shuffle_bullet_ids_safe(param,row_list_keep,ids_to_keep,pc_ids,npc_ids)
             else:
                 print(f"Safe shuffle not implemented for {param.name}")
                 return
@@ -75,8 +76,9 @@ def mod_param():
         second_param = pr.parse_param(copy_param[0],copy_param[1])
         param = dop.copy_param_data(param,second_param,row_list_ignore)
     #paramb = dop.restore_rows(paramb,get_param(name),0)
-    if(True):
-        param = dop.limit_rows(param,{4:[0.1,8,2]})
+    if(len(limit)>0):
+        print("[Limiting values] ->")
+        param = dop.limit_rows(param,limit_dict)
 
     print("\n\n---------- [Repacking Param] -----------\n")
     param_data = pr.pack_param(param, param_file_path)
@@ -170,7 +172,7 @@ def mod_speffect_param(chance,name="SpEffectParam"):
 
 
 """ parse console arguments """
-print("[] - Version 0.1\n")
+print("[PyRE] - Version 0.1\n")
 
 help_message = "What params shall i parse today?\n\n" \
                 + "Default settings if not otherwise specified:\n"     \
@@ -211,6 +213,10 @@ parser.add_argument("--shuffle_safe",
                     dest="shuffle_safe", action="store_const",
                     const=True, default=False,
                     help="make sure to only assign ids to other ids with a similar atkId")
+parser.add_argument("--limit", 
+                    dest="limit", action="append", nargs="+", type=float,
+                    help="[ROW MIN MAX NEW_MIN NEW_MAX] Limits the value for the specified row. Can be used multiple times")
+
 
 parser.add_argument("--random_self_refs", 
                     dest="self_refs", nargs="+",
@@ -242,6 +248,9 @@ parser.add_argument("-i", "--interactive",
                     action="store_true", dest="interactive", default=False,
                     help="don't load or process any param files (use with interactive console)")
 
+if(len(sys.argv)==1):
+    sys.argv.append("--help")
+    print(sys.argv)
 args = parser.parse_args()
 d_args = vars(args)
 
@@ -266,6 +275,15 @@ ids_to_keep = d_args["ids_to_keep"]
 if(ids_to_keep==None):
     ids_to_keep = []
 shuffle_safe = d_args["shuffle_safe"]
+
+limit = d_args["limit"]
+if(limit==None):
+    limit = []
+limit_dict = {}
+for i in range(len(limit)):
+    limit_index = int(limit[i][0])
+    limit_entry = [limit[i][1],limit[i][2],limit[i][3],limit[i][4]]
+    limit_dict[limit_index] = limit_entry
 
 self_ref_rows = d_args["self_refs"]
 if(self_ref_rows==None):

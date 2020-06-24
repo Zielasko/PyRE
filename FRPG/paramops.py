@@ -1,13 +1,16 @@
+""" Functions for manipulating param data """
 import random
 import copy
-import format_converter as fm
-import data_utils as dt
-import parse_param as pr
+
+import FRPG.formats as fm
+import FRPG.utils as dt
+import FRPG.paramparser as pr
 
 
 
 
 def replaceZero(param,replacement_value):
+    """ Replaces all zeros in any row """
     print(f"replacing all 0 with {replacement_value} for param {param.name}")
 
     for key in param.data:
@@ -23,6 +26,7 @@ def replaceZero(param,replacement_value):
     return param
     
 def shuffle_ids(param,rows_to_keep,ids_to_keep):
+    """ shuffle all ids for the specified param """
     print(f"Randomizing all ids for param {param.name}")
     print(f"Excluded Rows [{rows_to_keep})")
     print(f"Excluded IDs  [{ids_to_keep})")
@@ -53,6 +57,7 @@ def shuffle_ids(param,rows_to_keep,ids_to_keep):
 
 
 def add_random_self_refs(param,rows_to_change,chance=0.3):
+    """ assign random ids to the specified row if the value is <0 and random > chance """
     print(f"Adding random id refs to some ids for param {param.name}")
 
     ids = list(param.data.keys())
@@ -94,7 +99,11 @@ def limit_rows(param,dict_row_min_max):
     for key in param.data:
         for row in dict_row_min_max.keys():
             value = param.data[key][row]
-            if(value < dict_row_min_max[row][0] or dict_row_min_max[row][1] < value):
+            if(dict_row_min_max[row][1] < value or value == -1):
+                new_value = dict_row_min_max[row][3]
+                param.data[key][row] = new_value
+                print(f"clamped[{value} -> {new_value}]")
+            if(value < dict_row_min_max[row][0] and value != -1):
                 new_value = dict_row_min_max[row][2]
                 param.data[key][row] = new_value
                 print(f"clamped[{value} -> {new_value}]")
@@ -146,7 +155,7 @@ def get_param_ids_with_value_in_row(param,row,values):
             ids.append(id)
     return ids
 
-def shuffle_bullet_ids_save(param,rows_to_keep,ids_to_keep,atk_pc,atk_npc,chance=0):
+def shuffle_bullet_ids_safe(param,rows_to_keep,ids_to_keep,atk_pc,atk_npc,chance=0):
     print(f"Randomizing all ids for param {param.name}")
     print(f"Excluded Rows [{rows_to_keep})")
     print(f"Excluded IDs  [{ids_to_keep})")

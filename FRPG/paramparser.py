@@ -1,7 +1,7 @@
 from struct import Struct
 
-import format_converter as fm
-import data_utils as dt
+import FRPG.formats as fm
+import FRPG.utils as dt
 
 HEADER_END = 0x40
 
