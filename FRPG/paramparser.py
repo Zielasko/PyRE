@@ -14,7 +14,7 @@ ID_OFFSET_FORMAT_STRING = "<3Q"
 
 DEBUG_LOGGING_LEVEL = 0
 log_unpack = 0
-log_repack = 0
+log_repack = 1
 
 
 
@@ -331,6 +331,7 @@ def pack_param(param_in,original_param_file_path):
                 if(DEBUG_LOGGING_LEVEL>0 and log_repack > 0): # -- DEBUG --
                     print(f"PACK FORMAT: {data_format_string}")
                     print(f"value: {value}")
+                    print(f"Key: {key} Value {row_index}")
                 if(row.variable_type==fm.Data_type.AoB.value):
                     #print(*value)
                     new_entry_data = current_row_struct.pack(*value)

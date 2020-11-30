@@ -1,4 +1,7 @@
 import FRPG.formats as fm
+from FRPG.formats import Data_type
+from FRPG.formats import type_string
+from FRPG.formats import type_size
 
 class CE_Entry:
     description = ""
@@ -15,7 +18,12 @@ class CE_Entry:
 def generate_continuous_offsets(number_of_entries,data_type,base_address=0,*offsets):
     entry_list = []
     for i in range(number_of_entries):
-      entry = CE_Entry(f"{type_string[data_type.value]}_{i}", data_type.value, 0, base_address,i * type_size[data_type.value],*offsets)
+      description=""
+      if(base_address==0 or base_address.isdigit()):
+          description = f"{type_string[data_type.value]}_{i}"
+      else:
+          description = f"{base_address}_{i}"
+      entry = CE_Entry(description, data_type.value, 0, base_address,i * type_size[data_type.value],*offsets)
       entry_list.append(entry)
     return entry_list
 
@@ -39,7 +47,10 @@ def entry_to_XML(entry,id=0):
         entry_string += "<ShowAsBinary>0</ShowAsBinary>\n"
     address = ""
     if(entry.base_address!=0):
-        address += f"0x{entry.base_address:x}"
+        try:
+            address += f"0x{entry.base_address:x}"
+        except ValueError:
+            address += entry.base_address
     address += f" + 0x{entry.address_offset:x}"
     entry_string += f"<Address>{address}</Address>\n"
     if(len(entry.offsets)>0):

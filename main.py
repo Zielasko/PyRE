@@ -28,7 +28,7 @@ def mod_param():
 
     if(replace_zeros!=0):
         print("[Replace Zeros] ->")
-        param = dop.replaceZero(param,replace_zeros)
+        param = dop.replace_zero(param,replace_zeros)
     if(shuffle_param_ids):
         print("[Shuffle Ids] ->")
         row_list_keep = []
@@ -58,6 +58,16 @@ def mod_param():
             index = pr.get_row_index(row,param.layout)
             row_list_ref.append(index)
         param = dop.add_random_self_refs(param,row_list_ref,chance)
+    if(len(rand_bullet_mult_rows)>0):
+        print("[Multiply random rows] ->")
+        row_list_mult_ref = []
+        for row in rand_bullet_mult_rows:
+            index = pr.get_row_index(row,param.layout)
+            row_list_mult_ref.append(index)
+        param = dop.multiply_random(param,row_list_mult_ref,chance,mult_max,adjust_bullet_angle)
+    if(make_bullets_visible>0 and param.name=="BULLET_PARAM_ST"):
+        print("[Add SFX to invisible bullets] ->")
+        param = dop.replace_zero_in_row(param,make_bullets_visible,1)
     if(len(restore)>0):
         print("[Restore rows] ->")
         row_list_res = []
@@ -224,10 +234,23 @@ parser.add_argument("--random_self_refs",
 parser.add_argument("--chance", 
                     dest="chance", type=float, default=0.3,
                     help="chance [0-1] used in other options like --random_self_refs")
+parser.add_argument("--random_bullet_multiplier", 
+                    dest="rand_bullet_mult", nargs="+",
+                    help="Multiply [chance * 100 %%] values in the specified rows by up to [mult_max]")
+parser.add_argument("--mult_max", 
+                    dest="mult_max", type=int, default=3,
+                    help="maximum for rand_bullet_mult")
+parser.add_argument("--adjust_bullet_angle", 
+                    dest="adjust_bullet_angle", action="store_const",
+                    const=True, default=False,
+                    help="adjust bullet angle when multiplying bullet_num to fire in a fan shape")
 
 parser.add_argument("--replace_zeros", 
                     dest="replace_zeros", default=0,
                     help="Replace all zeros in rows with the specified value")
+parser.add_argument("--visible_bullets", 
+                    dest="make_bullets_visible", type=int, default=0,
+                    help="make all invisible bullets visible by replacing any 0 bullet SFX ID with the specified value (1 = debug sfx)")
 
 parser.add_argument("--restore", 
                     dest="restore", nargs="+",
@@ -264,7 +287,7 @@ param_file_path = d_args["param_filename"]
 layout_file_path = d_args["layout_filename"]
 
 
-DEBUG_LOGGING_LEVEL = d_args["debug_level"]
+DEBUG_LOGGING_LEVEL = int(d_args["debug_level"])
 pr.DEBUG_LOGGING_LEVEL = DEBUG_LOGGING_LEVEL
 
 shuffle_param_ids = d_args["shuffle_param_ids"]
@@ -290,7 +313,14 @@ if(self_ref_rows==None):
     self_ref_rows = []
 chance = d_args["chance"]
 
+rand_bullet_mult_rows = d_args["rand_bullet_mult"]
+if(rand_bullet_mult_rows==None):
+    rand_bullet_mult_rows = []
+mult_max = max(d_args["mult_max"],1)
+adjust_bullet_angle = d_args["adjust_bullet_angle"]
+
 replace_zeros = d_args["replace_zeros"]
+make_bullets_visible = d_args["make_bullets_visible"]
 
 restore = d_args["restore"]
 if(restore==None):
