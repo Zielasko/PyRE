@@ -3,7 +3,7 @@ from enum import Enum
 
 import FRPG.formats as fm
 import FRPG.utils as dt
-from FRPG.formats import Logging_Level, log #TODO cleanup imports
+from FRPG.formats import Logging_Level, log, LOG_LEVEL #TODO cleanup imports
 
 HEADER_END = 0x40
 

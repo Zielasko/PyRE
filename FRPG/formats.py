@@ -12,8 +12,8 @@ class Logging_Level(Enum):
     OFF = 6
 
 LOG_LEVEL = Logging_Level.INFO
-log_unpack = 0
-log_repack = 0
+log_unpack = 1
+log_repack = 1
 
 
 def log(log_string, level=Logging_Level.INFO, packing_info=0, _end='\n'):

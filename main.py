@@ -8,7 +8,7 @@ import FRPG.paramops as dop
 import FRPG.formats as fm
 import CE.ce as ce
 
-from FRPG.paramparser import Logging_Level, log
+from FRPG.formats import Logging_Level, log
 
 param_path_default = r"../resources/GameParam/"
 layout_path_default = r"../resources/Layouts/"
@@ -184,7 +184,7 @@ def mod_speffect_param(chance,name="SpEffectParam"):
 
 
 """ parse console arguments """
-log("[PyRE] - Version 0.1\n")
+print("[PyRE] - Version 0.9\n")
 
 help_message = "What params shall i parse today?\n\n" \
                 + "Default settings if not otherwise specified:\n"     \
@@ -209,7 +209,15 @@ parser.add_argument("-fl", "--file_layout", dest="layout_filename", default="",
 
 
 
-parser.add_argument("-d", "--debug", dest="debug_level", default=False, help="Enable debug logging")
+parser.add_argument("-d", "--debug", dest="debug_level", action="store_const", 
+                    const=True, default=False, help="Enable debug logging")
+parser.add_argument("-q", "--quiet",
+                    action="store_true", dest="quiet", default=False,
+                    help="don't print status messages")
+parser.add_argument("-v", "--verbosity","--logging_level",
+                    dest="verbosity", type=int, default=2,
+                    help="Logging level which controls the amount and detail of information printed")
+
 
 
 parser.add_argument("--shuffle", 
@@ -266,9 +274,6 @@ parser.add_argument("--copy_ignore",
                     help="Param fields to ignore when copying (name or index)")
 
 
-parser.add_argument("-q", "--quiet",
-                    action="store_false", dest="verbose", default=True,
-                    help="don't print status messages") #TODO
 parser.add_argument("-i", "--interactive",
                     action="store_true", dest="interactive", default=False,
                     help="don't load or process any param files (use with interactive console)")
@@ -288,8 +293,17 @@ save_dir = d_args["out_path"]
 param_file_path = d_args["param_filename"]
 layout_file_path = d_args["layout_filename"]
 
+fm.LOG_LEVEL = Logging_Level(d_args["verbosity"])
+fm.LOG_LEVEL
+
 if(bool(d_args["debug_level"])):
-    pr.LOG_LEVEL = Logging_Level.DEBUG
+    fm.LOG_LEVEL = Logging_Level.DEBUG
+else:
+    if(bool(d_args["quiet"])):
+        fm.LOG_LEVEL = Logging_Level.ERROR
+
+
+
 
 shuffle_param_ids = d_args["shuffle_param_ids"]
 fields_to_keep = d_args["keep"] #TODO handle string names 
@@ -343,8 +357,6 @@ else:
 
     
 
-
-VERBOSE = d_args["verbose"]
 INTERACTIVE = d_args["interactive"]
 
 if(INTERACTIVE):
