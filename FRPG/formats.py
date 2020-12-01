@@ -1,5 +1,29 @@
 from enum import Enum
 import xml.etree.ElementTree as ET
+#from FRPG.paramparser import Logging_Level, log
+
+class Logging_Level(Enum):
+    ALL = 0
+    DEBUG = 1
+    INFO = 2
+    WARN = 3
+    ERROR = 4
+    CRITICAL = 5
+    OFF = 6
+
+LOG_LEVEL = Logging_Level.INFO
+log_unpack = 0
+log_repack = 0
+
+
+def log(log_string, level=Logging_Level.INFO, packing_info=0, _end='\n'):
+    """ prints a string to the console respecting logging level
+    """
+    if(level.value>=LOG_LEVEL.value):
+        if((packing_info == 0) or (packing_info == 1 and log_unpack) or (packing_info == 2 and log_repack)):
+            print(log_string, end = _end)
+            #print("LOG: " + str(log_string), end = _end)
+
 
 class Data_type(Enum):
     Binary = 1
@@ -12,7 +36,7 @@ class Data_type(Enum):
     String = 8
     AoB = 9
 
-class Param_Row:
+class Param_Field:
     name = "UNDEFINED"
     signed = False
     bit = 0
@@ -111,15 +135,15 @@ def layout2CE(path):
             
     return ce_entry_list
 
-def layout2ParamRows(path):
+def layout2ParamFields(path):
     layout_entry_list,tree = parse_layout_xml(path)
-    row_list = []
+    field_list = []
     total_offset = 0
     binary_counter = 0
     for layout_entry in layout_entry_list:
-        row = Param_Row(layout_entry["name"], layout_entry["type"],total_offset,layout_entry["length"],layout_entry["signed"])
+        field = Param_Field(layout_entry["name"], layout_entry["type"],total_offset,layout_entry["length"],layout_entry["signed"])
         if(layout_entry["type"]==Data_type.Binary.value):
-            row.bit = binary_counter
+            field.bit = binary_counter
             binary_counter +=1
             if(binary_counter>=8):
                 binary_counter = 0
@@ -128,9 +152,9 @@ def layout2ParamRows(path):
             if(binary_counter>0):
                 total_offset += 1
             total_offset += layout_entry["size"]
-        row_list.append(row)
+        field_list.append(field)
             
-    return row_list
+    return field_list
 
 
 
@@ -140,7 +164,7 @@ def parse_type_string(input_string):
     signed = False
     size = 0
     if(t_string[0:6]=="fixstr"):
-        print("ERROR: fixstr not implemented yet")
+        log("ERROR: fixstr not implemented yet", Logging_Level.ERROR)
         size = int(int(t_string[5:])/8)
         return e_type,size,False
     if(t_string[0:5]=="dummy"):
@@ -154,7 +178,7 @@ def parse_type_string(input_string):
         elif(size==8):
             e_type = Data_type.Double.value
         else:
-            print("ERROR unknown floatingpoint size")
+            log("ERROR unknown floatingpoint size", Logging_Level.ERROR)
         return e_type,size,False
     elif t_string[0] == "b":
         return Data_type.Binary.value,0,False
@@ -173,5 +197,5 @@ def parse_type_string(input_string):
     return e_type,size,signed
 
 def print_layout(param):
-    for i,row in enumerate(param.layout):
-        print(f"[{i}]: {row.name} : {row.variable_type}")
+    for i,field in enumerate(param.layout):
+        log(f"[{i}]: {field.name} : {field.variable_type}", Logging_Level.INFO)

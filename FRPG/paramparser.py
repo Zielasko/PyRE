@@ -1,7 +1,9 @@
 from struct import Struct
+from enum import Enum
 
 import FRPG.formats as fm
 import FRPG.utils as dt
+from FRPG.formats import Logging_Level, log #TODO cleanup imports
 
 HEADER_END = 0x40
 
@@ -12,32 +14,27 @@ NAME_OFFSET_PTR = 0x10
 HEADER_FORMAT_STRING = "<8Q"
 ID_OFFSET_FORMAT_STRING = "<3Q"
 
-DEBUG_LOGGING_LEVEL = 0
-log_unpack = 0
-log_repack = 1
-
-
 
 def create_param_from_layout(layout_path,name,entry_size):
-    rows = fm.layout2ParamRows(layout_path)
-    end_of_layout = rows[-1].offset+rows[-1].length+fm.type_size[rows[-1].variable_type] #TODO + 1 + 1 fix this something is off by one here
+    fields = fm.layout2ParamFields(layout_path)
+    end_of_layout = fields[-1].offset+fields[-1].length+fm.type_size[fields[-1].variable_type] #TODO + 1 + 1 fix this something is off by one here
     if(end_of_layout + 2<entry_size):
-        unknown_data_row = fm.Param_Row("Unknown", fm.Data_type.AoB.value,(end_of_layout),entry_size-end_of_layout) #create additional row for remaining unknown data
-        rows.append(unknown_data_row)
+        unknown_data_field = fm.Param_Field("Unknown", fm.Data_type.AoB.value,(end_of_layout),entry_size-end_of_layout) #create additional field for remaining unknown data
+        fields.append(unknown_data_field)
     if(end_of_layout>entry_size):
-        print("layout_doesnt match entry size read from param file")
-        print(f"layout size {end_of_layout} - entry_size {entry_size}")
+        log("layout_doesnt match entry size read from param file", Logging_Level.WARN)
+        log(f"layout size {end_of_layout} - entry_size {entry_size}", Logging_Level.WARN)
         return
-    param = fm.Param(name,entry_size,rows)
+    param = fm.Param(name,entry_size,fields)
     return param
 
-def get_row_index(row,layout):
+def get_field_index(field,layout):
     index = 0
     try:
-        index = int(row)
+        index = int(field)
     except ValueError:
-        for l_row in layout:
-            if(l_row.name==row):
+        for l_field in layout:
+            if(l_field.name==field):
                 break
             index += 1
     return index
@@ -47,8 +44,7 @@ def parse_param_header(data):
     """ unpack and parse the header of the param file """
     header_data = ""
     header_data = data[0:HEADER_END]
-    if(DEBUG_LOGGING_LEVEL>2):
-        print(header_data)
+    log(header_data,Logging_Level.ALL)
     header_struct = Struct(HEADER_FORMAT_STRING)
     header = header_struct.unpack(header_data)
 
@@ -60,9 +56,9 @@ def parse_id_list(data):
     id_list = []
     id_list_struct = Struct(ID_OFFSET_FORMAT_STRING)
     number_of_ids = ((len(data)/8)/3)
-    print(number_of_ids)
+    log(number_of_ids)
     if((number_of_ids-int(number_of_ids))>0.01):
-        print("ERROR: ID data is not divisible by 3")
+        log("ERROR: ID data is not divisible by 3", Logging_Level.ERROR)
         return
 
     for i in range(int(number_of_ids)):
@@ -75,7 +71,7 @@ def parse_id_list(data):
 
 def parse_param(param_file_path,layout_path_prefix):
     """ read param file from disk, unpack and parse it """
-    print("Unpacking Param ...")
+    log("Unpacking Param ...")
     data = dt.open_file(param_file_path)
 
     header = parse_param_header(data)
@@ -105,20 +101,18 @@ def parse_param(param_file_path,layout_path_prefix):
     current_offset = 0
     next_offset = 0
     for id in id_list:
-        if(DEBUG_LOGGING_LEVEL > 1 and log_unpack > 0):
-            print(f"ID: {id}")
+        log(f"ID: {id}", Logging_Level.DEBUG,1)
         current_entry = []
         binary_counter = 0
         bit = 0
         current_total_offset = (id_end + current_offset)
         if(id[1] < (current_total_offset-entry_size)):
-            print(f"ERROR: offset incorrect {current_total_offset} (expected: {id[1]} + {entry_size})")
+            log(f"ERROR: offset incorrect {current_total_offset} (expected: {id[1]} + {entry_size})", Logging_Level.ERROR)
             return
-        for row in param.layout:
-            if(DEBUG_LOGGING_LEVEL>1 and log_unpack > 0):
-                print(f"Row: {row.name}")
-                print(f"Type: {row.variable_type}")
-            if(row.variable_type==fm.Data_type.Binary.value):
+        for field in param.layout:
+            log(f"Field: {field.name}", Logging_Level.DEBUG,1)
+            log(f"Type: {field.variable_type}", Logging_Level.DEBUG,1)
+            if(field.variable_type==fm.Data_type.Binary.value):
                 bit = 2 ** binary_counter
                 binary_counter +=1
                 if(binary_counter>=8):
@@ -127,87 +121,81 @@ def parse_param(param_file_path,layout_path_prefix):
             else:
                 if(binary_counter>0):
                     current_offset += 1 #increase offset if less than 8 binary values were defined
-                next_offset = current_offset + fm.type_size[row.variable_type] + row.length #this can be handled in else since binary doesnt have a default size anyways
+                next_offset = current_offset + fm.type_size[field.variable_type] + field.length #this can be handled in else since binary doesnt have a default size anyways
 
             data_format_string = "<"
 
-            if(row.signed):
-                if(row.variable_type==fm.Data_type.Byte.value):
+            if(field.signed):
+                if(field.variable_type==fm.Data_type.Byte.value):
                     data_format_string += "b"
-                if(row.variable_type==fm.Data_type.Bytes_2.value):
+                if(field.variable_type==fm.Data_type.Bytes_2.value):
                     data_format_string += "h"
-                if(row.variable_type==fm.Data_type.Bytes_4.value):
+                if(field.variable_type==fm.Data_type.Bytes_4.value):
                     data_format_string += "i"
-                if(row.variable_type==fm.Data_type.Bytes_8.value):
+                if(field.variable_type==fm.Data_type.Bytes_8.value):
                     data_format_string += "q"
             else:
-                if(row.variable_type==fm.Data_type.Byte.value):
+                if(field.variable_type==fm.Data_type.Byte.value):
                     data_format_string += "B"
-                if(row.variable_type==fm.Data_type.Bytes_2.value):
+                if(field.variable_type==fm.Data_type.Bytes_2.value):
                     data_format_string += "H"
-                if(row.variable_type==fm.Data_type.Bytes_4.value):
+                if(field.variable_type==fm.Data_type.Bytes_4.value):
                     data_format_string += "I"
-                if(row.variable_type==fm.Data_type.Bytes_8.value):
+                if(field.variable_type==fm.Data_type.Bytes_8.value):
                     data_format_string += "Q"
 
-            if(row.variable_type==fm.Data_type.Binary.value):
+            if(field.variable_type==fm.Data_type.Binary.value):
                     data_format_string += "B"
-            if(row.variable_type==fm.Data_type.Float.value):
+            if(field.variable_type==fm.Data_type.Float.value):
                     data_format_string += "f"
-            if(row.variable_type==fm.Data_type.Double.value):
+            if(field.variable_type==fm.Data_type.Double.value):
                     data_format_string += "d"
-            if(row.variable_type==fm.Data_type.String.value):
-                    data_format_string += f"{row.length}s"
-            if(row.variable_type==fm.Data_type.AoB.value):
-                    data_format_string += f"{row.length}c"
+            if(field.variable_type==fm.Data_type.String.value):
+                    data_format_string += f"{field.length}s"
+            if(field.variable_type==fm.Data_type.AoB.value):
+                    data_format_string += f"{field.length}c"
 
-            current_row_struct = Struct(data_format_string)
-            if(DEBUG_LOGGING_LEVEL>1 and log_unpack > 0):
-                print(f"format: {data_format_string} : len: {len(entry_data[current_offset:next_offset])}")
-                print(f"data: {entry_data[current_offset:next_offset]}")
-            if(row.variable_type==fm.Data_type.Binary.value):
+            current_field_struct = Struct(data_format_string)
+            log(f"format: {data_format_string} : len: {len(entry_data[current_offset:next_offset])}", Logging_Level.DEBUG,1)
+            log(f"data: {entry_data[current_offset:next_offset]}", Logging_Level.DEBUG,1)
+            if(field.variable_type==fm.Data_type.Binary.value):
                 if(current_offset==next_offset): #TODO maybe restructure this to make it less convoluted
-                    val = current_row_struct.unpack(entry_data[current_offset:next_offset+1])[0]
-                    #print(f"ping {current_offset}")
+                    val = current_field_struct.unpack(entry_data[current_offset:next_offset+1])[0]
                 else:
-                    val = current_row_struct.unpack(entry_data[current_offset:next_offset])[0]
-                    #print(f"pong {current_offset}")
-                if(DEBUG_LOGGING_LEVEL>1 and log_repack > 0): # -- DEBUG --    
-                    print(f"{val} & {bit} = {val & bit}")
+                    val = current_field_struct.unpack(entry_data[current_offset:next_offset])[0]
+                log(f"{val} & {bit} = {val & bit}", Logging_Level.DEBUG,1)
                 val = min((val & bit),1)
             else:
-                if(row.variable_type==fm.Data_type.AoB.value or row.variable_type==fm.Data_type.String.value):
-                    #print("AOB")
+                if(field.variable_type==fm.Data_type.AoB.value or field.variable_type==fm.Data_type.String.value):
                     if(len(entry_data[current_offset:next_offset])==0): # -- ERROR --
-                        print("ERROR: no array data to unpack")
-                        print(f"[ID {id}] -> (row {row.name})")
-                        print(entry_data[current_offset-4:next_offset+4])
-                        print(f"last value: {val}")
+                        log("ERROR: no array data to unpack", Logging_Level.ERROR)
+                        log(f"[ID {id}] -> (field {field.name})", Logging_Level.ERROR)
+                        log(entry_data[current_offset-4:next_offset+4], Logging_Level.ERROR)
+                        log(f"last value: {val}", Logging_Level.ERROR)
                         return
                     else:
-                        val = current_row_struct.unpack(entry_data[current_offset:next_offset])
+                        val = current_field_struct.unpack(entry_data[current_offset:next_offset])
                 else:
                     if(len(entry_data[current_offset:next_offset])==0): # -- ERROR --
-                        print(f"ERROR: no data to unpack for format {data_format_string}")
-                        print(f"[ID {id}] -> (row {row.name})")
-                        print(entry_data[current_offset-4:next_offset+4])
-                        print(f"last value: {val}")
+                        log(f"ERROR: no data to unpack for format {data_format_string}", Logging_Level.ERROR)
+                        log(f"[ID {id}] -> (field {field.name})", Logging_Level.ERROR)
+                        log(entry_data[current_offset-4:next_offset+4], Logging_Level.ERROR)
+                        log(f"last value: {val}", Logging_Level.ERROR)
                         return
                     else:
-                        temp_val = current_row_struct.unpack(entry_data[current_offset:next_offset])
+                        temp_val = current_field_struct.unpack(entry_data[current_offset:next_offset])
                         val = temp_val[0]
                         if(len(temp_val)>1):
-                            print("ERROR: more than 1 return value while upacking")
+                            log("ERROR: more than 1 return value while upacking", Logging_Level.ERROR)
                             return
-            if(DEBUG_LOGGING_LEVEL>0 and log_unpack > 0):
-                print(f"value: {val}\n\n")
+            log(f"value: {val}\n", Logging_Level.ALL,1)
             current_offset = next_offset
             current_entry.append(val)
         data_list[id[0]] = current_entry
     param.data = data_list
     
   
-    print("Finished unpacking Param")
+    log("Finished unpacking Param")
     return param
 
 
@@ -215,7 +203,7 @@ def parse_param(param_file_path,layout_path_prefix):
 
 def pack_param(param_in,original_param_file_path):
     """ read param file from disk, unpack and parse it """
-    print("Repacking Param ...")
+    log("Repacking Param ...")
     param = param_in
     data = dt.open_file(original_param_file_path)
 
@@ -253,100 +241,91 @@ def pack_param(param_in,original_param_file_path):
     #param_data3 = b''
     
     for param_index,key in enumerate(param.data):
-        if(DEBUG_LOGGING_LEVEL>0 and log_repack > 0):
-            print(f"ID: {key}")
+        log(f"ID: {key}", Logging_Level.DEBUG,1)
         binary_counter = 0
         bit = 0
         current_binary_value = 0
         new_entry_data = ""
-        row_index = 0
-        for row in param.layout:
+        field_index = 0
+        for field in param.layout:
             data_format_string = "<"
             new_entry_data = b''
-            if(DEBUG_LOGGING_LEVEL>1 and log_repack > 0): # -- DEBUG --
-                print(f"Row: {row.name}")
-                print(f"Type: {row.variable_type}")
-            if(row.variable_type==fm.Data_type.Binary.value):
+            log(f"Field: {field.name}", Logging_Level.DEBUG,2)
+            log(f"Type: {field.variable_type}", Logging_Level.DEBUG,12)
+            if(field.variable_type==fm.Data_type.Binary.value):
                 prev_binary_value = current_binary_value
-                flag_value = param.data[key][row_index]
+                flag_value = param.data[key][field_index]
                 assert(flag_value<=1)
                 current_binary_value += (2 ** binary_counter) * flag_value
-                if(DEBUG_LOGGING_LEVEL>1 and log_repack > 0): # -- DEBUG --
-                    print(f"current_binary_value {current_binary_value} = (prev){prev_binary_value} + (2 ** {binary_counter}) * {param.data[key][row_index]}")
+                log(f"current_binary_value {current_binary_value} = (prev){prev_binary_value} + (2 ** {binary_counter}) * {param.data[key][field_index]}", Logging_Level.DEBUG,2)
                 binary_counter +=1
                 if(binary_counter>=8):
                     data_format_string += "B"
-                    if(DEBUG_LOGGING_LEVEL>0 and log_repack > 0):# -- DEBUG --
-                        print(f"PACK FORMAT: {data_format_string}")
-                        print(f"value: {value}")
-                    current_row_struct = Struct(data_format_string)
-                    new_entry_data = current_row_struct.pack(current_binary_value)
-                    if(DEBUG_LOGGING_LEVEL>0 and log_repack > 0): # -- DEBUG --
-                        print(f"Repacked: {new_entry_data}\n")
+                    log(f"PACK FORMAT: {data_format_string}", Logging_Level.DEBUG,2)
+                    log(f"value: {value}", Logging_Level.DEBUG,2)
+                    current_field_struct = Struct(data_format_string)
+                    new_entry_data = current_field_struct.pack(current_binary_value)
+                    log(f"Repacked: {new_entry_data}\n", Logging_Level.DEBUG,2)
                     binary_counter = 0
                     current_binary_value = 0
                     next_offset +=1 #increase offset after 8 binary values
             else:
                 if(binary_counter>0):
                     data_format_string += "B"
-                    current_row_struct = Struct(data_format_string)
-                    new_entry_data = current_row_struct.pack(current_binary_value)
-                    if(DEBUG_LOGGING_LEVEL>0 and log_repack > 0):# -- DEBUG --
-                        print(f"Current Binary Value: {current_binary_value}\n")
+                    current_field_struct = Struct(data_format_string)
+                    new_entry_data = current_field_struct.pack(current_binary_value)
+                    log(f"Current Binary Value: {current_binary_value}", Logging_Level.DEBUG,2)
                     binary_counter = 0
                     current_binary_value = 0
-                    print("Failed successfully")
-                    print("Less than 8 successive bianries occured")
+                    log("Failed successfully", Logging_Level.ERROR)
+                    log("Less than 8 successive binaries occured", Logging_Level.ERROR)
                     return
-                if(row.signed):
-                    if(row.variable_type==fm.Data_type.Byte.value):
+                if(field.signed):
+                    if(field.variable_type==fm.Data_type.Byte.value):
                         data_format_string += "b"
-                    if(row.variable_type==fm.Data_type.Bytes_2.value):
+                    if(field.variable_type==fm.Data_type.Bytes_2.value):
                         data_format_string += "h"
-                    if(row.variable_type==fm.Data_type.Bytes_4.value):
+                    if(field.variable_type==fm.Data_type.Bytes_4.value):
                         data_format_string += "i"
-                    if(row.variable_type==fm.Data_type.Bytes_8.value):
+                    if(field.variable_type==fm.Data_type.Bytes_8.value):
                         data_format_string += "q"
                 else:
-                    if(row.variable_type==fm.Data_type.Byte.value):
+                    if(field.variable_type==fm.Data_type.Byte.value):
                         data_format_string += "B"
-                    if(row.variable_type==fm.Data_type.Bytes_2.value):
+                    if(field.variable_type==fm.Data_type.Bytes_2.value):
                         data_format_string += "H"
-                    if(row.variable_type==fm.Data_type.Bytes_4.value):
+                    if(field.variable_type==fm.Data_type.Bytes_4.value):
                         data_format_string += "I"
-                    if(row.variable_type==fm.Data_type.Bytes_8.value):
+                    if(field.variable_type==fm.Data_type.Bytes_8.value):
                         data_format_string += "Q"
 
-                if(row.variable_type==fm.Data_type.Float.value):
+                if(field.variable_type==fm.Data_type.Float.value):
                     data_format_string += "f"
-                if(row.variable_type==fm.Data_type.Double.value):
+                if(field.variable_type==fm.Data_type.Double.value):
                     data_format_string += "d"
-                if(row.variable_type==fm.Data_type.String.value):
-                    data_format_string += f"{row.length}s"
-                if(row.variable_type==fm.Data_type.AoB.value):
-                    data_format_string += f"{row.length}c"
+                if(field.variable_type==fm.Data_type.String.value):
+                    data_format_string += f"{field.length}s"
+                if(field.variable_type==fm.Data_type.AoB.value):
+                    data_format_string += f"{field.length}c"
 
-                current_row_struct = Struct(data_format_string)
-                value = param.data[key][row_index]
-                if(DEBUG_LOGGING_LEVEL>0 and log_repack > 0): # -- DEBUG --
-                    print(f"PACK FORMAT: {data_format_string}")
-                    print(f"value: {value}")
-                    print(f"Key: {key} Value {row_index}")
-                if(row.variable_type==fm.Data_type.AoB.value):
-                    #print(*value)
-                    new_entry_data = current_row_struct.pack(*value)
+                current_field_struct = Struct(data_format_string)
+                value = param.data[key][field_index]
+                log(f"PACK FORMAT: {data_format_string}", Logging_Level.DEBUG,2)
+                log(f"value: {value}", Logging_Level.DEBUG,2)
+                log(f"Key: {key} Value {field_index}", Logging_Level.DEBUG,2)
+                if(field.variable_type==fm.Data_type.AoB.value):
+                    new_entry_data = current_field_struct.pack(*value)
                 else:
-                    new_entry_data = current_row_struct.pack(value)
-                if(DEBUG_LOGGING_LEVEL>0 and log_repack > 0):          # -- DEBUG --
-                    print(f"Repacked: {new_entry_data}\n")
-            row_index += 1
+                    new_entry_data = current_field_struct.pack(value)
+                log(f"Repacked: {new_entry_data}", Logging_Level.DEBUG,2)
+            field_index += 1
             param_data_list[int(param_index/800)] += new_entry_data
         #pass
-        print(f"[{param_index}/{len(param.data)}] : [{len(new_param_file)}]", end = '\r')
+        log(f"[{param_index}/{len(param.data)}] : [{len(new_param_file)}]", Logging_Level.INFO, 0, '\r')
     for pdata in param_data_list:
         new_param_file += pdata
     new_param_file += name_data
-    print("Finished packing Param")
+    log("Finished packing Param", Logging_Level.INFO)
     return new_param_file
 
 

@@ -5,70 +5,69 @@ import copy
 import FRPG.formats as fm
 import FRPG.utils as dt
 import FRPG.paramparser as pr
-
-
+from FRPG.paramparser import Logging_Level, log
 
 
 def replaceZero(param,replacement_value):
-    """ Replaces all zeros in any row """
-    print(f"replacing all 0 with {replacement_value} for param {param.name}")
+    """ Replaces all zeros in any field """
+    log(f"replacing all 0 with {replacement_value} for param {param.name}", Logging_Level.INFO)
 
     for key in param.data:
-        print(f"ID: {key}")
+        log(f"ID: {key}", Logging_Level.INFO)
         index = 0
-        for row in param.layout:
-                print(f"Row: {row.name}")
-                print(f"Type: {row.variable_type}")
+        for field in param.layout:
+                log(f"Field: {field.name}", Logging_Level.INFO)
+                log(f"Type: {field.variable_type}", Logging_Level.INFO)
                 value = param.data[key][index]
                 if(value==0):
                     param.data[key][index]=replacement_value
                 index += 1
     return param
 
-def replace_zero_in_row(param,replacement_value, row):
-    """ Replaces all zeros in specific row """
-    print(f"replacing all 0 in row {row}  with {replacement_value} for param {param.name}")
+def replace_zero_in_field(param,replacement_value, field):
+    """ Replaces all zeros in specific field """
+    log(f"replacing all 0 in field {field}  with {replacement_value} for param {param.name}", Logging_Level.INFO)
 
     for key in param.data:
-        if(param.data[key][row]==0):
-            param.data[key][row]=replacement_value
-            print(f"ID: {key}")
+        if(param.data[key][field]==0):
+            param.data[key][field]=replacement_value
+            log(f"ID: {key}", Logging_Level.INFO)
     return param
 
-def shuffle_ids(param,rows_to_keep,ids_to_keep):
+def shuffle_ids(param,fields_to_keep,ids_to_keep):
     """ shuffle all ids for the specified param """
-    print(f"Randomizing all ids for param {param.name}")
-    print(f"Excluded Rows [{rows_to_keep})")
-    print(f"Excluded IDs  [{ids_to_keep})")
+    log(f"Randomizing all ids for param {param.name}", Logging_Level.INFO)
+    log(f"Excluded Fields [{fields_to_keep})", Logging_Level.INFO)
+    log(f"Excluded IDs  [{ids_to_keep})", Logging_Level.INFO)
 
     ids = list(param.data.keys())
     random.shuffle(ids)
-    print(ids[0:10])
+    log(ids[0:10], Logging_Level.DEBUG)
 
     param_data = param.data
     new_param_data = copy.deepcopy(param_data)
     index = 0
     for key in new_param_data:
         if(key in ids_to_keep):
-            print(f"skipping {key}")
+            log(f"skipping {key}", Logging_Level.INFO)
         else:
             new_param_data[key] = param_data[ids[index]]
-            print(f"Swapping ID: {key} with ID: {ids[index]}")
+            log(f"Swapping ID: {key} with ID: {ids[index]}", Logging_Level.INFO)
         index += 1
 
-    if(len(rows_to_keep)>0):
+    if(len(fields_to_keep)>0):
         for key in new_param_data:
-            for row in rows_to_keep:
-                print(f"restore row {row} for ID: {key}")
-                new_param_data[key][row] = param_data[key][row]
+            for field in fields_to_keep:
+                log(f"restore field {field} for ID: {key}", Logging_Level.INFO)
+                new_param_data[key][field] = param_data[key][field]
     param.data = new_param_data
     return param
 
 
 
-def add_random_self_refs(param,rows_to_change,chance=0.3):
-    """ assign random ids to the specified row if the value is <0 and random > chance """
-    print(f"Adding random id refs to some ids for param {param.name}")
+def add_random_self_refs(param,fields_to_change,chance=0.3):
+    """ assign random ids to the specified field if the value is <0 and random > chance """
+    log(f"Adding random id refs to some ids for param {param.name}")
 
     ids = list(param.data.keys())
     random.shuffle(ids)
@@ -78,21 +77,21 @@ def add_random_self_refs(param,rows_to_change,chance=0.3):
     for key in param.data:
         random_chance = random.random()
         if(random_chance<=chance):
-            for row in rows_to_change:
-                if(param.data[key][row] > 1):
+            for field in fields_to_change:
+                if(param.data[key][field] > 1):
                     pass
                 else:
                     value_to_set = ids[index]
                     if(value_to_set!=key):
                         index += 1
-                        print(f"Set row {row} of ID: {key} to ID: {value_to_set}")
-                        param.data[key][row] = ids[index]
-    print(f"[{index}] references added")
+                        log(f"Set field {field} of ID: {key} to ID: {value_to_set}", Logging_Level.INFO)
+                        param.data[key][field] = ids[index]
+    log(f"[{index}] references added")
     return param
 
-def multiply_random(param,rows_to_change,chance=0.3,mult_max=3, adjust_bullet_angle=False):
-    """ multiply specified row for random entries if the value is <0 and random > chance """
-    print(f"Mult random for param {param.name}\nMult_max{mult_max} Row{rows_to_change}")
+def multiply_random(param,fields_to_change,chance=0.3,mult_max=3, adjust_bullet_angle=False):
+    """ multiply specified field for random entries if the value is <0 and random > chance """
+    log(f"Mult random for param {param.name}\nMult_max{mult_max} Field{fields_to_change}", Logging_Level.INFO)
 
     SHOOT_ANGLE = 34
     SHOOT_ANGLE_INTERVAL = 35
@@ -102,20 +101,20 @@ def multiply_random(param,rows_to_change,chance=0.3,mult_max=3, adjust_bullet_an
     for key in param.data:
         random_chance = random.random()
         if(random_chance<=chance):
-            for row in rows_to_change:
+            for field in fields_to_change:
                 b_multiplier = random.randint(1,mult_max)
-                temp_value_to_set = int(param.data[key][row] * b_multiplier)
-                print(f"Set row {row} of ID: {key} to value: {value_to_set}")
+                temp_value_to_set = int(param.data[key][field] * b_multiplier)
+                log(f"Set field {field} of ID: {key} to value: {value_to_set}")
                 value_to_set = max(min(temp_value_to_set,32767),-32768)
                 if(value_to_set>50):
-                    print(f"\n[WARNING] num_shoot > 50\n NUM:{value_to_set} (ORIGINAL: {param.data[key][row]})ID: {key}\n")
+                    log(f"\n[WARNING] num_shoot > 50\n NUM:{value_to_set} (ORIGINAL: {param.data[key][field]})ID: {key}\n", Logging_Level.WARN)
                     if(value_to_set != temp_value_to_set):
-                        print(f"num_shoot value outside of short")
-                    print(f"Value set to 50")
+                        log(f"num_shoot value outside of short", Logging_Level.WARN)
+                    log(f"Value set to 50", Logging_Level.WARN)
                     value_to_set = int(50)
-                param.data[key][row] = value_to_set
+                param.data[key][field] = value_to_set
                 if(adjust_bullet_angle and param.name=="BULLET_PARAM_ST"):
-                    if(row==32):
+                    if(field==32):
                         old_shoot_angle = param.data[key][SHOOT_ANGLE]
                         new_shoot_angle = 0
                         old_shoot_angle_interval = param.data[key][SHOOT_ANGLE_INTERVAL]
@@ -132,69 +131,69 @@ def multiply_random(param,rows_to_change,chance=0.3,mult_max=3, adjust_bullet_an
                             #keep one shot centered
                             if(old_shoot_angle_interval==0):
                                 param.data[key][SHOOT_ANGLE_INTERVAL] = int(3)
-                        print(f"Adjusted angles to {param.data[key][SHOOT_ANGLE]} : {param.data[key][SHOOT_ANGLE_INTERVAL]}")
+                        log(f"Adjusted angles to {param.data[key][SHOOT_ANGLE]} : {param.data[key][SHOOT_ANGLE_INTERVAL]}", Logging_Level.DEBUG)
     return param
 
-def replace_zero_rows(param,dict_row_value):
-    print(f"replacing all 0 in rows {dict_row_value.keys()} for param {param.name}")
+def replace_zero_fields(param,dict_field_value):
+    log(f"replacing all 0 in fields {dict_field_value.keys()} for param {param.name}")
 
     for key in param.data:
-        print(f"ID: {key}")
-        for row in dict_row_min_max.keys():
-            print(f"Row: {row}")
-            value = param.data[key][row]
+        log(f"ID: {key}")
+        for field in dict_field_min_max.keys():
+            log(f"Field: {field}")
+            value = param.data[key][field]
             if(value==0):
-                param.data[key][row]=dict_row_value[row]
+                param.data[key][field]=dict_field_value[field]
     return param
 
-def limit_rows(param,dict_row_min_max):
+def limit_fields(param,dict_field_min_max):
     """ param, {min,max,default} """
-    print(f"Limiting rows {dict_row_min_max.keys()} for param {param.name}")
+    log(f"Limiting fields {dict_field_min_max.keys()} for param {param.name}")
 
     for key in param.data:
-        for row in dict_row_min_max.keys():
-            value = param.data[key][row]
-            if(dict_row_min_max[row][1] < value or value == -1):
-                new_value = dict_row_min_max[row][3]
-                param.data[key][row] = new_value
-                print(f"clamped[{value} -> {new_value}]")
-            if(value < dict_row_min_max[row][0] and value != -1):
-                new_value = dict_row_min_max[row][2]
-                param.data[key][row] = new_value
-                print(f"clamped[{value} -> {new_value}]")
+        for field in dict_field_min_max.keys():
+            value = param.data[key][field]
+            if(dict_field_min_max[field][1] < value or value == -1):
+                new_value = dict_field_min_max[field][3]
+                param.data[key][field] = new_value
+                log(f"clamped[{value} -> {new_value}]")
+            if(value < dict_field_min_max[field][0] and value != -1):
+                new_value = dict_field_min_max[field][2]
+                param.data[key][field] = new_value
+                log(f"clamped[{value} -> {new_value}]")
     return param
 
-def restore_rows(param,default_param,rows_to_restore):
-    print(f"Restoring rows {rows_to_restore} for param {param.name}")
+def restore_fields(param,default_param,fields_to_restore):
+    log(f"Restoring fields {fields_to_restore} for param {param.name}")
 
     for key in param.data:
-        for row in rows_to_restore:
-            old_value = param.data[key][row]
-            value = default_param.data[key][row]
-            print(f"Restore Row: {row} [{old_value} -> {value}]")
-            param.data[key][row]=value
+        for field in fields_to_restore:
+            old_value = param.data[key][field]
+            value = default_param.data[key][field]
+            log(f"Restore Field: {field} [{old_value} -> {value}]")
+            param.data[key][field]=value
     return param
 
-def copy_param_data(param,second_param,rows_to_ignore):
-    print(f"Copying rows for param {param.name}")
-    print(f"Ignoring {rows_to_ignore}")
+def copy_param_data(param,second_param,fields_to_ignore):
+    log(f"Copying fields for param {param.name}")
+    log(f"Ignoring {fields_to_ignore}")
 
     ids2 = list(second_param.data.keys())
     id_index = 0
     for key in param.data:
-        row_index = 0
-        for row in param.layout:
-            if(row_index in rows_to_ignore):
+        field_index = 0
+        for field in param.layout:
+            if(field_index in fields_to_ignore):
                 pass
-                #print(f"Ignoring row {row.name}")
+                #log(f"Ignoring field {field.name}", Logging_Level.DEBUG)
             else:
-                old_value = param.data[key][row_index]
-                value = second_param.data[ids2[id_index]][row_index]
-                #print(f"Restore Row: {row.name} [{old_value} -> {value}]")
-                param.data[key][row_index]=value
-            row_index +=1
+                old_value = param.data[key][field_index]
+                value = second_param.data[ids2[id_index]][field_index]
+                #log(f"Restore Field: {field.name} [{old_value} -> {value}]", Logging_Level.DEBUG)
+                param.data[key][field_index]=value
+            field_index +=1
         id_index +=1
-    print(f"{id_index} IDs replaced")
+    log(f"{id_index} IDs replaced")
     return param
 
 def param_intersection(param1,param2):
@@ -203,35 +202,35 @@ def param_intersection(param1,param2):
     intersection_ids = set(ids1) & set(ids2)
     return intersection_ids
 
-def get_param_ids_with_value_in_row(param,row,values):
+def get_param_ids_with_value_in_field(param,field,values):
     ids = []
     for id in param.data.keys():
-        if(param.data[id][row] in values):
+        if(param.data[id][field] in values):
             ids.append(id)
     return ids
 
-def shuffle_bullet_ids_safe(param,rows_to_keep,ids_to_keep,atk_pc,atk_npc,chance=0):
-    print(f"Randomizing all ids for param {param.name} (Safe Mode)")
-    print(f"Excluded Rows [{rows_to_keep})")
-    print(f"Excluded IDs  [{ids_to_keep})")
+def shuffle_bullet_ids_safe(param,fields_to_keep,ids_to_keep,atk_pc,atk_npc,chance=0):
+    log(f"Randomizing all ids for param {param.name} (Safe Mode)")
+    log(f"Excluded Fields [{fields_to_keep})")
+    log(f"Excluded IDs  [{ids_to_keep})")
 
     atk_inter = atk_pc & atk_npc
     atk_pc_only = atk_pc - atk_npc
     atk_npc_only = atk_npc - atk_pc
 
-    ids_pc = get_param_ids_with_value_in_row(param,0,atk_pc_only)
-    ids_npc = get_param_ids_with_value_in_row(param,0,atk_npc_only)
-    ids_inter = get_param_ids_with_value_in_row(param,0,atk_inter)
+    ids_pc = get_param_ids_with_value_in_field(param,0,atk_pc_only)
+    ids_npc = get_param_ids_with_value_in_field(param,0,atk_npc_only)
+    ids_inter = get_param_ids_with_value_in_field(param,0,atk_inter)
 
 
     random.shuffle(ids_pc)
     random.shuffle(ids_npc)
     random.shuffle(ids_inter)
 
-    print("ids:")
-    print(ids_pc[0:10])
-    print(ids_npc[0:10])
-    print(ids_inter[0:10])
+    log("ids:")
+    log(ids_pc[0:10])
+    log(ids_npc[0:10])
+    log(ids_inter[0:10])
 
     param_data = param.data
     new_param_data = copy.deepcopy(param_data)
@@ -240,7 +239,7 @@ def shuffle_bullet_ids_safe(param,rows_to_keep,ids_to_keep,atk_pc,atk_npc,chance
         replacement_id = 0
         hit_id = 0
         if(key in ids_to_keep):
-            print(f"skipping {key}")
+            log(f"skipping {key}")
         else:
             if(key in ids_inter):
                 replacement_id = ids_inter[index%len(ids_inter)]
@@ -252,19 +251,19 @@ def shuffle_bullet_ids_safe(param,rows_to_keep,ids_to_keep,atk_pc,atk_npc,chance
                 if(key in ids_npc):
                     replacement_id = ids_npc[index%len(ids_npc)]
                     hit_id = ids_npc[(index+1)%len(ids_npc)]
-            print(f"Swapping ID: {key} with ID: {replacement_id}")
+            log(f"Swapping ID: {key} with ID: {replacement_id}")
             new_param_data[key] = param_data[replacement_id]
             if(random.random()<=chance and new_param_data[key][26]<=0):
-                print(f"Set hitId {hit_id} for id {key}")
+                log(f"Set hitId {hit_id} for id {key}")
                 new_param_data[key][26] = hit_id
 
         index += 1
 
-    if(len(rows_to_keep)>0):
+    if(len(fields_to_keep)>0):
         for key in new_param_data:
-            for row in rows_to_keep:
-                print(f"restore row {row} for ID: {key}")
-                new_param_data[key][row] = param_data[key][row]
+            for field in fields_to_keep:
+                log(f"restore field {field} for ID: {key}")
+                new_param_data[key][field] = param_data[key][field]
     param.data = new_param_data
     return param
 

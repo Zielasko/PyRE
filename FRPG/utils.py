@@ -30,8 +30,6 @@ def convert_to_ascii_string(data):
 
 
 
-
-
 """ These are based on Deces format.py """
 def open_file(path):
     """ open the file specified in path """
