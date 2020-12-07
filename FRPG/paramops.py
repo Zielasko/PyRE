@@ -5,7 +5,7 @@ import copy
 import FRPG.formats as fm
 import FRPG.utils as dt
 import FRPG.paramparser as pr
-from FRPG.paramparser import Logging_Level, log
+from FRPG.utils import Logging_Level, log
 
 
 def replaceZero(param,replacement_value):
@@ -32,6 +32,36 @@ def replace_zero_in_field(param,replacement_value, field):
         if(param.data[key][field]==0):
             param.data[key][field]=replacement_value
             log(f"ID: {key}", Logging_Level.INFO)
+    return param
+
+def replace_zero_fields(param,dict_field_value):
+    log(f"replacing all 0 in fields {dict_field_value.keys()} for param {param.name}")
+
+    for key in param.data:
+        log(f"ID: {key}")
+        for field in dict_field_min_max.keys():
+            log(f"Field: {field}")
+            value = param.data[key][field]
+            if(value==0):
+                param.data[key][field]=dict_field_value[field]
+    return param
+
+def limit_fields(param,dict_field_min_max,ignore_inf=False):
+    """ param, {min,max,default} 
+        treats -1 as max"""
+    log(f"Limiting fields {dict_field_min_max.keys()} for param {param.name}")
+
+    for key in param.data:
+        for field in dict_field_min_max.keys():
+            value = param.data[key][field]
+            if(dict_field_min_max[field][1] < value or (abs(value + 1.0) < 0.01 and not ignore_inf)):
+                new_value = dict_field_min_max[field][3]
+                param.data[key][field] = new_value
+                log(f"clamped[{value} -> {new_value}]")
+            if(value < dict_field_min_max[field][0] and abs(value + 1.0) > 0.01):
+                new_value = dict_field_min_max[field][2]
+                param.data[key][field] = new_value
+                log(f"clamped[{value} -> {new_value}]")
     return param
 
 def shuffle_ids(param,fields_to_keep,ids_to_keep):
@@ -134,35 +164,6 @@ def multiply_random(param,fields_to_change,chance=0.3,mult_max=3, adjust_bullet_
                         log(f"Adjusted angles to {param.data[key][SHOOT_ANGLE]} : {param.data[key][SHOOT_ANGLE_INTERVAL]}", Logging_Level.DEBUG)
     return param
 
-def replace_zero_fields(param,dict_field_value):
-    log(f"replacing all 0 in fields {dict_field_value.keys()} for param {param.name}")
-
-    for key in param.data:
-        log(f"ID: {key}")
-        for field in dict_field_min_max.keys():
-            log(f"Field: {field}")
-            value = param.data[key][field]
-            if(value==0):
-                param.data[key][field]=dict_field_value[field]
-    return param
-
-def limit_fields(param,dict_field_min_max):
-    """ param, {min,max,default} """
-    log(f"Limiting fields {dict_field_min_max.keys()} for param {param.name}")
-
-    for key in param.data:
-        for field in dict_field_min_max.keys():
-            value = param.data[key][field]
-            if(dict_field_min_max[field][1] < value or value == -1):
-                new_value = dict_field_min_max[field][3]
-                param.data[key][field] = new_value
-                log(f"clamped[{value} -> {new_value}]")
-            if(value < dict_field_min_max[field][0] and value != -1):
-                new_value = dict_field_min_max[field][2]
-                param.data[key][field] = new_value
-                log(f"clamped[{value} -> {new_value}]")
-    return param
-
 def restore_fields(param,default_param,fields_to_restore):
     log(f"Restoring fields {fields_to_restore} for param {param.name}")
 
@@ -253,10 +254,9 @@ def shuffle_bullet_ids_safe(param,fields_to_keep,ids_to_keep,atk_pc,atk_npc,chan
                     hit_id = ids_npc[(index+1)%len(ids_npc)]
             log(f"Swapping ID: {key} with ID: {replacement_id}")
             new_param_data[key] = param_data[replacement_id]
-            if(random.random()<=chance and new_param_data[key][26]<=0):
+            if(random.random()<=chance): # and new_param_data[key][26]<=0):
                 log(f"Set hitId {hit_id} for id {key}")
                 new_param_data[key][26] = hit_id
-
         index += 1
 
     if(len(fields_to_keep)>0):

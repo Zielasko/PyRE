@@ -1,28 +1,6 @@
 from enum import Enum
 import xml.etree.ElementTree as ET
-#from FRPG.paramparser import Logging_Level, log
-
-class Logging_Level(Enum):
-    ALL = 0
-    DEBUG = 1
-    INFO = 2
-    WARN = 3
-    ERROR = 4
-    CRITICAL = 5
-    OFF = 6
-
-LOG_LEVEL = Logging_Level.INFO
-log_unpack = 1
-log_repack = 1
-
-
-def log(log_string, level=Logging_Level.INFO, packing_info=0, _end='\n'):
-    """ prints a string to the console respecting logging level
-    """
-    if(level.value>=LOG_LEVEL.value):
-        if((packing_info == 0) or (packing_info == 1 and log_unpack) or (packing_info == 2 and log_repack)):
-            print(log_string, end = _end)
-            #print("LOG: " + str(log_string), end = _end)
+from FRPG.utils import Logging_Level, log, set_LOG_LEVEL
 
 
 class Data_type(Enum):

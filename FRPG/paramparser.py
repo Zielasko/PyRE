@@ -1,9 +1,9 @@
 from struct import Struct
-from enum import Enum
+#from enum import Enum
 
 import FRPG.formats as fm
 import FRPG.utils as dt
-from FRPG.formats import Logging_Level, log, LOG_LEVEL #TODO cleanup imports
+from FRPG.utils import Logging_Level, log, set_LOG_LEVEL
 
 HEADER_END = 0x40
 
@@ -225,7 +225,7 @@ def pack_param(param_in,original_param_file_path):
 
     """ get unknown offset from file """
     unknown_offset = data[HEADER_END+2*8:HEADER_END+3*8]
-    #print(f"unknown offset: {unknown_offset}")
+    #log(f"unknown offset: {unknown_offset}")
 
     """ parse data from param entries """
     current_offset = 0

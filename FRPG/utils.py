@@ -1,17 +1,42 @@
 import binascii
 import string
+from enum import Enum
 
 
+class Logging_Level(Enum):
+    ALL = 0
+    DEBUG = 1
+    INFO = 2
+    WARN = 3
+    ERROR = 4
+    CRITICAL = 5
+    OFF = 6
+
+LOG_LEVEL = Logging_Level.INFO
+log_unpack = 1
+log_repack = 1
 
 
+def log(log_string, level=Logging_Level.INFO, packing_info=0, _end='\n'):
+    """ prints a string to the console respecting logging level
+    """
+    if(level.value>=LOG_LEVEL.value):
+        if((packing_info == 0) or (packing_info == 1 and log_unpack) or (packing_info == 2 and log_repack)):
+            print(log_string, end = _end)
+            #print("LOG: " + str(log_string), end = _end)
 
-
-
-
-
-
-
-
+def set_LOG_LEVEL(level):
+    if(type(level) is int):
+        if(level>Logging_Level.OFF.value):
+            print(f"[WARNING] LOG_LEVEL {level} out of range - Level set to OFF")
+            LOG_LEVEL = Logging_Level.OFF
+        elif(level<Logging_Level.ALL.value):
+            print(f"[WARNING] LOG_LEVEL {level} out of range - Level set to ALL")
+            LOG_LEVEL = Logging_Level.ALL
+        else:
+            LOG_LEVEL = Logging_Level(level)
+    else:# is type Logging_level
+        LOG_LEVEL = level
 
 def convert_to_ascii_string(data):
     """ reads bytes from data and converts to string. 

@@ -8,7 +8,7 @@ import FRPG.paramops as dop
 import FRPG.formats as fm
 import CE.ce as ce
 
-from FRPG.formats import Logging_Level, log
+from FRPG.utils import Logging_Level, log, set_LOG_LEVEL
 
 param_path_default = r"../resources/GameParam/"
 layout_path_default = r"../resources/Layouts/"
@@ -293,14 +293,13 @@ save_dir = d_args["out_path"]
 param_file_path = d_args["param_filename"]
 layout_file_path = d_args["layout_filename"]
 
-fm.LOG_LEVEL = Logging_Level(d_args["verbosity"])
-fm.LOG_LEVEL
+set_LOG_LEVEL(d_args["verbosity"])
 
 if(bool(d_args["debug_level"])):
-    fm.LOG_LEVEL = Logging_Level.DEBUG
+    set_LOG_LEVEL(Logging_Level.DEBUG)
 else:
     if(bool(d_args["quiet"])):
-        fm.LOG_LEVEL = Logging_Level.ERROR
+       set_LOG_LEVEL(Logging_Level.ERROR)
 
 
 
