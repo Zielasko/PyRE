@@ -184,7 +184,7 @@ def mod_speffect_param(chance,name="SpEffectParam"):
 
 
 """ parse console arguments """
-print("[PyRE] - Version 0.9\n")
+print("[PyRE] - Version 1.0\n")
 
 help_message = "What params shall i parse today?\n\n" \
                 + "Default settings if not otherwise specified:\n"     \

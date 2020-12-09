@@ -98,7 +98,8 @@ def shuffle_ids(param,fields_to_keep,ids_to_keep,secondary_only):
                 new_param_data[key][field] = param_data[key][field]
     param.data = new_param_data
 
-    loops = check_loops(param,26) #TODO maybe add this as a flag
+    log("\n\nCHECK FOR LOOPS\n\n")
+    param = check_loops(param,26,secondary_ids,True) #TODO maybe add this as a flag
 
     return param
 
@@ -295,19 +296,23 @@ def shuffle_bullet_ids_safe(param,fields_to_keep,ids_to_keep,atk_pc,atk_npc,seco
     log("\n\nCHECK FOR LOOPS AGAIN 2\n\n")
     param = check_loops(param,26,secondary_ids,False)
 
-    #alter the bullet that is fired at Sekiro when enemies discover you
-    #this makes sure the player is not nuked at sight
-    param.data[10001500][4] = 2 #double the time until the childbullet is spawned
-    random_sfxid = param.data[ids_inter[random.randint(0,len(ids_inter)-1)]][1]
-    if(random_sfxid>0):
-        param.data[10001500][1] = random_sfxid
-    else:
-        param.data[10001500][1] = 60
+    if(10001500 in param.data.keys()):
+        log("Rebalancing bullet 10001500 for Sekiro")
+        #alter the bullet that is fired at Sekiro when enemies discover you
+        #this makes sure the player is not nuked at sight
+        param.data[10001500][4] = 2 #double the time until the childbullet is spawned
+        random_sfxid = param.data[ids_inter[random.randint(0,len(ids_inter)-1)]][1]
+        if(random_sfxid>0):
+            param.data[10001500][1] = random_sfxid
+        else:
+            param.data[10001500][1] = 60
 
-    #only allow one childbullet
-    childbullet = param.data[10001500][26]
-    if(childbullet>-1):
-        param.data[childbullet][26] = -1
+        #only allow one childbullet
+        childbullet = param.data[10001500][26]
+        if(childbullet>-1):
+            param.data[childbullet][26] = -1
+    else:
+        log("No bullet with id 10001500 - probably not Sekiro Bulletparam")
 
     return param
 
@@ -322,7 +327,12 @@ def check_loops(param, field, secondary_ids=[], fix_loops=False):
         if(current_id in ids_checked): #if one id was checked, all later in the chain were
             log(f"ID {current_id} was already checked (Skipped)", Logging_Level.DEBUG)
         else:
-            while param.data[current_id][field] > 0:
+            while True:
+                if(current_id not in param.data.keys()):
+                    log(f"[WARNING] referenced bullet {current_id} does not exist", Logging_Level.WARN)
+                    break
+                if(param.data[current_id][field] < 0):
+                    break
                 if(current_id in current_chain):
                     log(f"Infinite Loop [LEN {len(current_chain)}] detected for IDs:\n{current_chain}\n",Logging_Level.DEBUG)
                     discovered_loops.append(current_chain) #additionally save a list of all loops lists

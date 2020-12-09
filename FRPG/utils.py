@@ -23,9 +23,10 @@ def log(log_string, level=Logging_Level.INFO, packing_info=0, _end='\n'):
     if(level.value>=LOG_LEVEL.value):
         if((packing_info == 0) or (packing_info == 1 and log_unpack) or (packing_info == 2 and log_repack)):
             print(log_string, end = _end)
-            #print("LOG: " + str(log_string), end = _end)
+            #print(f"[{LOG_LEVEL.name}]: " + str(log_string), end = _end)
 
 def set_LOG_LEVEL(level):
+    global LOG_LEVEL
     if(type(level) is int):
         if(level>Logging_Level.OFF.value):
             print(f"[WARNING] LOG_LEVEL {level} out of range - Level set to OFF")
@@ -37,6 +38,7 @@ def set_LOG_LEVEL(level):
             LOG_LEVEL = Logging_Level(level)
     else:# is type Logging_level
         LOG_LEVEL = level
+    log(f"Logginglevel set to {LOG_LEVEL}", Logging_Level.INFO)
 
 def convert_to_ascii_string(data):
     """ reads bytes from data and converts to string. 
