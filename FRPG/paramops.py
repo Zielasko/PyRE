@@ -293,10 +293,21 @@ def shuffle_bullet_ids_safe(param,fields_to_keep,ids_to_keep,atk_pc,atk_npc,seco
     log("\n\nCHECK FOR LOOPS 1\n\n")
     param = check_loops(param,26,secondary_ids,True) #TODO maybe add this as a flag
     log("\n\nCHECK FOR LOOPS AGAIN 2\n\n")
-    param = check_loops(param,26,secondary_ids,True)
-    log("\n\nCHECK FOR LOOPS AGAIN 3\n\n")
-    param = check_loops(param,26)
+    param = check_loops(param,26,secondary_ids,False)
 
+    #alter the bullet that is fired at Sekiro when enemies discover you
+    #this makes sure the player is not nuked at sight
+    param.data[10001500][4] = 2 #double the time until the childbullet is spawned
+    random_sfxid = param.data[ids_inter[random.randint(0,len(ids_inter)-1)]][1]
+    if(random_sfxid>0):
+        param.data[10001500][1] = random_sfxid
+    else:
+        param.data[10001500][1] = 60
+
+    #only allow one childbullet
+    childbullet = param.data[10001500][26]
+    if(childbullet>-1):
+        param.data[childbullet][26] = -1
 
     return param
 
@@ -332,11 +343,27 @@ def check_loops(param, field, secondary_ids=[], fix_loops=False):
         log("\n\n\n\n---- [No loops found] ----\n\n\n\n")
     if(fix_loops):
         for loop in discovered_loops:
-            for l_id in loop:
+            fixed_loop = False
+            for n in range(len(loop)-1,0,-1):
+                l_id = loop[n]
                 if(l_id in secondary_ids or len(secondary_ids)<1):
-                    param.data[l_id][field] = -1
-                    log(f"set hitid for id {l_id} to -1")
+                    if(param.name=="BULLET_PARAM_ST"):
+                        param.data[l_id][field] = 0 #set to special bullet without hitid
+                    else:
+                        param.data[l_id][field] = -1 #set to invalid
+                    fixed_loop = True
+                    log(f"broke loop at id {l_id}")
                     break
+            if(not fixed_loop):
+                log(f"Could not break loop by replacing secondary hitids\nReplacing first hitid instead [LOOP:{loop}]")
         log(f"fixed {len(discovered_loops)} loops")
+        if(param.name=="BULLET_PARAM_ST"):
+            log("[modifying bullet 0]")
+            #alter bullet 0
+            param.data[0][0] = 200 #might have to change this or create special atkid, but 200 is in both pc and npc atk param and is not empty
+            param.data[0][1] = 1060 # sfxid = idol blue flame
+            param.data[0][4] = 1
+            param.data[0][26] = -1
+            param.data[0][32] = 1 #num shoot
     return param
 
