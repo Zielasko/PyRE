@@ -64,7 +64,7 @@ def limit_fields(param,dict_field_min_max,ignore_inf=False):
                 log(f"clamped[{value} -> {new_value}]")
     return param
 
-def shuffle_ids(param,fields_to_keep,ids_to_keep):
+def shuffle_ids(param,fields_to_keep,ids_to_keep,secondary_only):
     """ shuffle all ids for the specified param """
     log(f"Randomizing all ids for param {param.name}", Logging_Level.INFO)
     log(f"Excluded Fields [{fields_to_keep})", Logging_Level.INFO)
@@ -74,11 +74,17 @@ def shuffle_ids(param,fields_to_keep,ids_to_keep):
     random.shuffle(ids)
     log(ids[0:10], Logging_Level.DEBUG)
 
+    secondary_ids = []
+    if(secondary_only):
+        secondary_ids = get_secondary_bullet_ids(param)
+        log(f"secondary Hit IDs:{secondary_ids}")
+        log(f"{len(secondary_ids)} of {len(param.data.keys())} bullets have hit ids", Logging_Level.DEBUG)
+
     param_data = param.data
     new_param_data = copy.deepcopy(param_data)
     index = 0
     for key in new_param_data:
-        if(key in ids_to_keep):
+        if(key in ids_to_keep or (secondary_only and key not in secondary_ids)):
             log(f"skipping {key}", Logging_Level.INFO)
         else:
             new_param_data[key] = param_data[ids[index]]
@@ -91,6 +97,9 @@ def shuffle_ids(param,fields_to_keep,ids_to_keep):
                 log(f"restore field {field} for ID: {key}", Logging_Level.INFO)
                 new_param_data[key][field] = param_data[key][field]
     param.data = new_param_data
+
+    loops = check_loops(param,26) #TODO maybe add this as a flag
+
     return param
 
 
@@ -210,7 +219,15 @@ def get_param_ids_with_value_in_field(param,field,values):
             ids.append(id)
     return ids
 
-def shuffle_bullet_ids_safe(param,fields_to_keep,ids_to_keep,atk_pc,atk_npc,chance=0):
+def get_secondary_bullet_ids(param):
+    ids = []
+    for id in param.data.keys():
+        current_hit_id = param.data[id][26];
+        if(current_hit_id>0 and current_hit_id not in ids):
+            ids.append(id)
+    return ids
+
+def shuffle_bullet_ids_safe(param,fields_to_keep,ids_to_keep,atk_pc,atk_npc,secondary_only,chance=0):
     log(f"Randomizing all ids for param {param.name} (Safe Mode)")
     log(f"Excluded Fields [{fields_to_keep})")
     log(f"Excluded IDs  [{ids_to_keep})")
@@ -222,6 +239,12 @@ def shuffle_bullet_ids_safe(param,fields_to_keep,ids_to_keep,atk_pc,atk_npc,chan
     ids_pc = get_param_ids_with_value_in_field(param,0,atk_pc_only)
     ids_npc = get_param_ids_with_value_in_field(param,0,atk_npc_only)
     ids_inter = get_param_ids_with_value_in_field(param,0,atk_inter)
+
+    secondary_ids = []
+    if(secondary_only):
+        secondary_ids = get_secondary_bullet_ids(param)
+        log(f"secondary Hit IDs:{secondary_ids}", Logging_Level.DEBUG)
+        log(f"{len(secondary_ids)} of {len(param.data.keys())} bullets have hit ids", Logging_Level.DEBUG)
 
 
     random.shuffle(ids_pc)
@@ -252,8 +275,9 @@ def shuffle_bullet_ids_safe(param,fields_to_keep,ids_to_keep,atk_pc,atk_npc,chan
                 if(key in ids_npc):
                     replacement_id = ids_npc[index%len(ids_npc)]
                     hit_id = ids_npc[(index+1)%len(ids_npc)]
-            log(f"Swapping ID: {key} with ID: {replacement_id}")
-            new_param_data[key] = param_data[replacement_id]
+            if((not secondary_only) or (key in secondary_ids)):
+                new_param_data[key] = param_data[replacement_id]
+                log(f"Swapping ID: {key} with ID: {replacement_id}")
             if(random.random()<=chance): # and new_param_data[key][26]<=0):
                 log(f"Set hitId {hit_id} for id {key}")
                 new_param_data[key][26] = hit_id
@@ -265,7 +289,54 @@ def shuffle_bullet_ids_safe(param,fields_to_keep,ids_to_keep,atk_pc,atk_npc,chan
                 log(f"restore field {field} for ID: {key}")
                 new_param_data[key][field] = param_data[key][field]
     param.data = new_param_data
+
+    log("\n\nCHECK FOR LOOPS 1\n\n")
+    param = check_loops(param,26,secondary_ids,True) #TODO maybe add this as a flag
+    log("\n\nCHECK FOR LOOPS AGAIN 2\n\n")
+    param = check_loops(param,26,secondary_ids,True)
+    log("\n\nCHECK FOR LOOPS AGAIN 3\n\n")
+    param = check_loops(param,26)
+
+
     return param
 
-
+def check_loops(param, field, secondary_ids=[], fix_loops=False):
+    ids_checked = []
+    current_chain = []
+    current_id = 0
+    discovered_loops = []
+    longest_loop = []
+    for id in param.data.keys():
+        current_id = id
+        if(current_id in ids_checked): #if one id was checked, all later in the chain were
+            log(f"ID {current_id} was already checked (Skipped)", Logging_Level.DEBUG)
+        else:
+            while param.data[current_id][field] > 0:
+                if(current_id in current_chain):
+                    log(f"Infinite Loop [LEN {len(current_chain)}] detected for IDs:\n{current_chain}\n",Logging_Level.DEBUG)
+                    discovered_loops.append(current_chain) #additionally save a list of all loops lists
+                    if(len(current_chain)>len(longest_loop)):
+                        longest_loop = current_chain
+                    break
+                else:
+                    current_chain.append(current_id)
+                    current_id = param.data[current_id][field]
+            ids_checked.extend(current_chain)
+            current_chain = []
+            if(id not in ids_checked):
+                ids_checked.append(id)
+    if(len(discovered_loops)>0):
+        log(f"Number of Loops discovered: {len(discovered_loops)}")
+        log(f"Longest Loop [LEN {len(longest_loop)}]: {longest_loop}")
+    else:
+        log("\n\n\n\n---- [No loops found] ----\n\n\n\n")
+    if(fix_loops):
+        for loop in discovered_loops:
+            for l_id in loop:
+                if(l_id in secondary_ids or len(secondary_ids)<1):
+                    param.data[l_id][field] = -1
+                    log(f"set hitid for id {l_id} to -1")
+                    break
+        log(f"fixed {len(discovered_loops)} loops")
+    return param
 

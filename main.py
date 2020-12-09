@@ -45,14 +45,14 @@ def mod_param():
                 npc_ids = param_npc_atk.data.keys()
                 if(len(self_ref_fields)>0):
                     log("[Add self references SAFE] ->")
-                    param = dop.shuffle_bullet_ids_safe(param,field_list_keep,ids_to_keep,pc_ids,npc_ids,chance)
+                    param = dop.shuffle_bullet_ids_safe(param,field_list_keep,ids_to_keep,pc_ids,npc_ids,secondary_only,chance)
                 else:
-                    param = dop.shuffle_bullet_ids_safe(param,field_list_keep,ids_to_keep,pc_ids,npc_ids)
+                    param = dop.shuffle_bullet_ids_safe(param,field_list_keep,ids_to_keep,pc_ids,npc_ids,secondary_only)
             else:
                 log(f"Safe shuffle not implemented for {param.name}")
                 return
         else:
-            param = dop.shuffle_ids(param,field_list_keep,ids_to_keep)
+            param = dop.shuffle_ids(param,field_list_keep,ids_to_keep,secondary_only)
     if(len(self_ref_fields)>0 and not shuffle_safe):
         log("[Add self references] ->")
         field_list_ref = []
@@ -233,6 +233,10 @@ parser.add_argument("--shuffle_safe",
                     dest="shuffle_safe", action="store_const",
                     const=True, default=False,
                     help="make sure to only assign ids to other ids with a similar atkId")
+parser.add_argument("--secondary_only", 
+                    dest="shuffle_secondary_only", action="store_const",
+                    const=True, default=False,
+                    help="only shuffle IDs that are spawned as a hitid by other bullets")
 parser.add_argument("--limit", 
                     dest="limit", action="append", nargs="+", type=float,
                     help="[FIELD MIN MAX NEW_MIN NEW_MAX] Limits the value for the specified field. Can be used multiple times")
@@ -312,6 +316,7 @@ ids_to_keep = d_args["ids_to_keep"]
 if(ids_to_keep==None):
     ids_to_keep = []
 shuffle_safe = d_args["shuffle_safe"]
+secondary_only = d_args["shuffle_secondary_only"]
 
 limit = d_args["limit"]
 if(limit==None):
